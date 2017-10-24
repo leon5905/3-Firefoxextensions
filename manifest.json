@@ -1,7 +1,7 @@
 {
 
   "manifest_version": 2,
-  "name": "Borderify",
+  "name": "Password Manager +",
   "version": "1.0",
 
   "description": "Adds a red border to all webpages matching mozilla.org.",
@@ -24,7 +24,14 @@
       "64": "icons/Password+64.png"
     },
     "default_title": "Password Manager +",
-    "default_popup": "popup/browser-action-popup.html"
+    "default_popup": "webpage/browser-action-popup.html"
+  },
+
+  "applications": {
+    "gecko": {
+      "id": "yeohweizhu@gmail.com",
+      "strict_min_version": "1.0"
+    }
   }
 
   // "permission":{

@@ -1,0 +1,13 @@
+.main-div{
+    background-color: gainsboro;
+    min-width: 300px;
+    min-height: 550px;
+    width:100%;
+    height: 100%;
+    display: table;
+}
+
+div .btn{
+    vertical-align: bottom;
+    border-radius: 0px; 
+}
