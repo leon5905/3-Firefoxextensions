@@ -7,11 +7,7 @@
   "description": "Adds a red border to all webpages matching mozilla.org.",
 
   "icons": {
-    "48": "icons/border-48.png"
-  },
-
-  "chrome_url_overrides" : {
-    "newtab": "new-tab.html"
+    "48": "icons/Password+48.png"
   },
 
   "content_scripts": [
@@ -19,8 +15,19 @@
       "matches": ["*://*.google.com/*"],
       "js": ["demo.js"]
     }
-  ]
+  ],
 
+  "browser_action": {
+    "browser_style": true,
+    "default_icon": {
+      "48": "icons/Password+48.png",
+      "64": "icons/Password+64.png"
+    },
+    "default_title": "Password Manager +",
+    "default_popup": "popup/browser-action-popup.html"
+  }
 
-
+  // "permission":{
+    
+  // }
 }
