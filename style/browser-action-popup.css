@@ -173,4 +173,15 @@ html, body {height: 100%;}
     bottom:55px;
     overflow: auto;
 }
+
+.popup-list-section{
+    padding-top: 10px;
+}
 /*end of content*/
+
+/*Special, End of Special*/
+.before-vertical-align-view-icon :before{
+    vertical-align: middle;
+    content:"\f06e";
+}
+/**/
