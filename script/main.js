@@ -1,5 +1,5 @@
 $(document).ready(function(){
-    $("#btn-open-seperate").click(function(){
+    $("#popup-btn-seperate").click(function(){
         var win = window.open('/webpage/browser-action-popup.html');
         if (win) {
             //Browser has allowed it to be opened

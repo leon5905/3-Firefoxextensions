@@ -3,13 +3,36 @@
 <head>
   <link rel="stylesheet" href="/style/browser-action-popup.css">
   <link rel="stylesheet" href="/style/bootstrap.min.css"/>
-  <script src="/script/bootstrap.min.js"></script>
   <script src="/script/jquery-3.2.1.min.js"></script>
+  <script src="/script/bootstrap.min.js"></script>
   <script src="/script/main.js"></script>
+  <script src="/script/browser-action-popup.js"></script>
+  <link rel="stylesheet" href="/icons/font-awesome-4.7.0/css/font-awesome.min.css">
 </head>
-<body>
-  <div class="main-div">
-    <button id="btn-open-seperate" type="button" class="btn btn-primary btn-block">Open Seperate Page</button> 
+<body class="popup-body">
+  <div class="popup-div">
+     <div class="popup-top-bar">
+          <div class="popup-search-bar">
+              <span class="fa fa-search popup-search-display"></span>
+              <input placeholder="Type here to search">
+          </div>
+          <div class="popup-new-item" title="Add New Profile">
+            <div class="popup-new-item-flex">
+             <a class="popup-new-item-a"><i class="fa fa-plus"></i></a>
+            </div>
+          </div>
+      </div>
+      <div class="popup-content">
+        asdsd
+      </div>
+
+    <div class="popup-bottom-bar">
+     <div class="icon-bar">
+       <a class="active icon-bar-item" title="Home"><i class="fa fa-home"></i></a>
+       <a class="icon-bar-item"><i class="fa fa-cog" title="Settings"></i></a>
+       <a class="icon-bar-item" id="popup-btn-seperate" title="Open Password Manager +"><i class="fa fa-external-link"></i></a>
+      </div> 
+    </div>
   </div>
 </body>
 </html>
