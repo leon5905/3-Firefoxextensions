@@ -1,18 +1,19 @@
 html, body {height: 100%;}
 
 .popup-body{
-    height: 100%;
-    width: 100%;
+    min-width:325px;
+    min-height:550px;
+    height: 100vh;
+    width: 100vw;
     overflow:hidden;
 }
 
 .popup-div{
     background-color: gainsboro;
-    min-width:325px;
-    min-height:550px;
-    width:100vw;
-    height: 100vh;
-    overflow:hidden;
+
+    width:100%;
+    height: 100%;
+    overflow:auto;
 }
 
 /*Start of Top Bar*/
@@ -177,11 +178,14 @@ html, body {height: 100%;}
 .popup-list-section{
     padding-top: 10px;
 }
-/*end of content*/
 
-/*Special, End of Special*/
-.before-vertical-align-view-icon :before{
-    vertical-align: middle;
-    content:"\f06e";
-}
-/**/
+/* .popup-list-section ::before{
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    width: calc(100% - 10px);
+    border-bottom: 1px solid #f0f0f0;
+} */
+/*end of content*/
