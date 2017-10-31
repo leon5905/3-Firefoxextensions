@@ -165,6 +165,14 @@ html, body {height: 100%;}
 /*End of Bottom bar*/
 
 /*Start of Content*/
+.popup-hidden{
+    width:0px;
+    height:0px;
+    display:inline;
+    position:absolute;
+    top:-2000px;
+}
+
 .popup-content{
     width:100%;
 
@@ -179,6 +187,12 @@ html, body {height: 100%;}
     padding-top: 10px;
 }
 
+.popup-input:disabled{
+    color:#777777;
+}
+.popup-input:enabled{
+    color:black;
+}
 /* .popup-list-section ::before{
     content: "";
     position: absolute;

@@ -15,7 +15,7 @@
      <div class="popup-top-bar">
           <div class="popup-search-bar">
               <span class="fa fa-search popup-search-display"></span>
-              <input placeholder="Type here to search">
+              <input id="popup-search-input" placeholder="Type here to search">
           </div>
           <div class="popup-new-item" title="Add New Profile">
             <div class="popup-new-item-flex">
@@ -24,7 +24,13 @@
           </div>
       </div>
       <div class="popup-content">
-        asdsd
+        <input id="hiddenInput" class="popup-hidden"></input>
+        <div id="popup-nocontent-search" style="width:100%;height:100%;display:none;justify-content:center;align-items:center">
+          <div>
+            <i class="fa fa-info-circle" style="font-size:12em;display:block;text-align:center"></i>
+            <label style="display:block;text-align:center;font-size:24px;">Result Not Found</label>
+          </div>
+        </div>
       </div>
 
     <div class="popup-bottom-bar">
