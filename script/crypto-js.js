@@ -1,3 +1,5 @@
+//MIT LICENSE Copyright (c) Copyright (c) 2009-2013 Jeff Mott, 2013-2016 Evan Vosberg
+
 ;(function (root, factory) {
 	if (typeof exports === "object") {
 		// CommonJS

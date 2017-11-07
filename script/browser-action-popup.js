@@ -9,7 +9,7 @@ $(document).ready(function(){
 
     $(".popup-new-item-a").click(function(){
         if (!mainWindow.addNewItemWindow){
-            addNewItemHelper.addNewItem($(".popup-body"), addNewItemHelper.new);
+            addNewItemHelper.addNewItem($(".popup-body"), addNewItemHelper.new,-1);
         }        
     });
 
@@ -22,28 +22,225 @@ $(document).ready(function(){
             window.close(); //Close the current one
         } else {
             //Browser has blocked it
-            alert('Please allow popups for this website');
         }
     });
 
     //Assign Function to Home
+    $("#popup-btn-home").click(function(){ 
+        var thisInstance = $(this);
+        if (thisInstance.hasClass('active')) return;
 
-    //Assign Function to Settings
+        $("#popup-btn-tools").removeClass('active');
+        thisInstance.addClass("active");
+        var topBar = $('#popup-search-top-bar');
+        topBar.css('display','table');
+        var content = $('#popup-home-content');
+        content.css('display','block');
+        var topBar2 = $('#popup-setting-top-bar');
+        topBar2.css('display','none');
+        var content2 = $('#popup-setting-content');
+        content2.css('display','none');
+    });
+
+    //Assign Function to Settings/Tools
+    $("#popup-btn-tools").click(function(){ 
+        var thisInstance = $(this);
+        if (thisInstance.hasClass('active')) return;
+        
+        $("#popup-btn-home").removeClass("active");
+        thisInstance.addClass("active");
+
+        var topBar = $('#popup-search-top-bar');
+        topBar.css('display','none');
+        var content = $('#popup-home-content');
+        content.css('display','none');
+        var topBar2 = $('#popup-setting-top-bar');
+        topBar2.css('display','table');
+        var content2 = $('#popup-setting-content');
+        content2.css('display','block');
+
+    });
+
+    //Load Settings/Tools
+    $('#popup-setting-top-bar').append(mainPageHelper.generateMainPageHeader("Tools"));
+
+    //Current Tab Section
+    var toolSection=$('<div></div');
+    toolSection.append(addNewItemHelper.generateContentSectionHeader(""));
+    var toolList=$('<div></div>');
+    var generatePasswordDiv = mainPageHelper.generateToolPageEntry('fa-bolt','Password Generator','Auto-generate a secure password using advance algorithm.','gold');
+    var exportCSV = mainPageHelper.generateToolPageEntry('fa-upload','Export CSV','Export all record (username,password,etc.) to a comma-seperated value text file.','midnightblue');
+    var importCSV = mainPageHelper.generateToolPageEntry('fa-download','Import CSV','Only Work in Fullscreen Mode. Import record saved as csv format (Required format produced by the Export Function)');
+    var changeMasterKey = mainPageHelper.generateToolPageEntry('fa-key','Master Key','Change the Master Key of the Extension.','indigo');
+    var clearAllRecord = mainPageHelper.generateToolPageEntry('fa-trash','Clear All','CLEAR ALL RECORD!','red');
+
+    toolList.append(generatePasswordDiv);
+    toolList.append(exportCSV);
+    toolList.append(importCSV);
+    toolList.append(changeMasterKey);
+    toolList.append(clearAllRecord);
+    toolSection.append(toolList);//End of Currentab Section
+
+    generatePasswordDiv.click(function(){
+        PasswordGenerator.generatePasswordDiv(null,$('body'),1004);
+    });
+    clearAllRecord.click(function(){
+        $( "#dialog-confirm" ).dialog({
+            resizable: false,
+            height: "auto",
+            width: 300,
+            modal: true,
+            buttons: {
+              "Delete all items": function() {
+                  mainWindow.recordList = [];
+                  mainWindow.saveDataAll();
+                  mainPageHelper.loadMainPage(mainWindow.recordList);
+                  mainWindow.pushNotification("All Records Deleted");      
+        
+                $( this ).dialog( "close" );
+              },
+              Cancel: function() {
+                $( this ).dialog( "close" );
+              }
+            }
+          });
+    });
+    exportCSV.click(function(){
+        if (mainWindow.recordList.length==0){
+            mainWindow.pushNotification("No Records to Download");
+            return;
+        }
+
+        const items = mainWindow.recordList        
+        const replacer = (key, value) => value === null ? '' : value 
+        const header = Object.keys(items[0])
+        let csv = items.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
+        csv.unshift(header.join(','))
+        csv = csv.join('\r\n');
+
+        mainWindow.download("records.csv",csv);
+        mainWindow.pushNotification("Records Exported");      
+    });
+    importCSV.click(function(){
+        var fileInput = $('<input id="csv" type="file"></input>');
+
+        fileInput.change(function(){
+            var reader = new FileReader();
+            reader.onload = function () {
+                var csv = reader.result;
+                var lines=csv.split("\n");
+                var result = [];
+                var headers=lines[0].split(",");
+                for (var i=0;i<headers.length;i++){
+                    headers[i]= headers[i].trim();
+                }
+            
+                for(var i=1;i<lines.length;i++){
+                  var obj = {};
+                  var currentline=lines[i].split(",");
+            
+                  for(var j=0;j<headers.length;j++){
+                      obj[headers[j]] = currentline[j].trim().slice(0,-1).substr(1);
+                    }
+        
+                    result.push(obj);
+                }
+
+                mainWindow.recordList = result;
+                mainWindow.saveDataAll();
+
+                mainWindow.pushNotification("Records Imported");
+
+                fileInput.remove();   
+            };
+            // start reading the file. When it is done, calls the onload event defined above.
+            reader.readAsBinaryString(fileInput.prop('files')[0]);
+
+        });
+        $('html').append(fileInput);
+        fileInput.trigger('click');
+
+        // console.log(JSON.stringify(result)); //JSON
+        // mainWindow.recordList = result;
+    });
+
+    $('#popup-setting-content').append(toolSection);
 
     // browser.storage.sync.clear(); //Purge Storage
+
+    mainWindow.searchEmptyDiv = $('#popup-nocontent-search');
     mainWindow.searchInput = $('#popup-search-input');
     mainWindow.searchInput.on('input',function(){
         mainPageHelper.searchFunction(mainWindow.searchInput.val());
-    })
-    mainWindow.searchEmptyDiv = $('#popup-nocontent-search');
+    });
+
 });
 
 //Collection of global var
 var mainWindow = {
-    pushNotification: function (messageString, notificationType, seconds){
-        //Z-index 1000
-        //TODO implement it
+    download:function (filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+      
+        element.style.display = 'none';
+        document.body.appendChild(element);
+      
+        element.click();
+      
+        document.body.removeChild(element);
+    },
 
+    pushNotification: function (messageString, notificationType, seconds){
+
+        $.notify({
+            // options
+            icon: 'fa fa-info-circle',
+            title: '',
+            message: messageString,
+            type: 'info'
+        },{
+            // settings
+            element: 'body',
+            position: null,
+            type: "info",
+            allow_dismiss: true,
+            newest_on_top: false,
+            showProgressbar: false,
+            placement: {
+                from: "bottom",
+                align: "right"
+            },
+            offset: {
+             x: 10,
+             y: 65  
+            },
+            spacing: 10,
+            z_index: 1031,
+            delay: 3000,
+            timer: 1000,
+            url_target: '_blank',
+            mouse_over: 'pause',
+            animate: {
+                enter: 'animated fadeInDown',
+                exit: 'animated fadeOutUp'
+            },
+            onShow: null,
+            onShown: null,
+            onClose: null,
+            onClosed: null,
+            icon_type: 'class',
+            template: '<div data-notify="container" class="col-xs-11 col-sm-3 alert alert-{0}" role="alert" style="width:50%;">' +
+                '<button type="button" aria-hidden="true" class="close" data-notify="dismiss">x</button>' +
+                '<span data-notify="icon"></span> ' +
+                '<span data-notify="title">{1}</span> ' +
+                '<span data-notify="message">{2}</span>' +
+                '<div class="progress" data-notify="progressbar">' +
+                    '<div class="progress-bar progress-bar-{0}" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div>' +
+                '</div>' +
+                '<a href="{3}" target="{4}" data-notify="url"></a>' +
+            '</div>' 
+        });
     },
 
     getTabsInfo: function(callback){
@@ -89,40 +286,111 @@ var mainWindow = {
     },
 
     saveData:function(url,name,username,password,note,favicon){
-        //TODO save data
-        console.log(password);
-        var encrypted = CryptoJS.AES.encrypt(password, this.masterKey);
-        console.log(encrypted.ciphertext);
-        var decrypted = CryptoJS.AES.decrypt(encrypted, this.masterKey);
-        console.log(decrypted.toString(CryptoJS.enc.Utf8));
+        mainWindow.saveDataWithIndex(url,name,username,password,note,favicon,this.recordList.length);
+    },
 
+    saveDataWithIndex:function(url,name,username,password,note,favicon,index){
         if (!favicon){
             favicon = mainWindow.deafultFavIconURL;
         }
 
         var obj = {url,name,username,password,note,favicon}
-        this.recordList[this.recordList.length] = obj;
+        this.recordList[index] = obj;
+
+        mainWindow.recordList.sort(function(a,b){ //Sort it
+            var textA = a.name.toUpperCase();
+            var textB = b.name.toUpperCase();
+
+            var textC = a.username.toUpperCase();
+            var textD = b.username.toUpperCase();
+            if (textA < textB) return -1;
+            else if (textA > textB) return 1;
+            else if (textC < textD) return -1;
+            else if (textC > textD) return 1;
+            else return 0;
+        });
 
         browser.storage.sync.set({
-            recordList:  mainWindow.recordList
-          });
+            recordList:  mainWindow.encryptList(mainWindow.recordList)
+        });
 
+        mainWindow.manualSyncUpdate();
+    },
+
+    saveDataAll(){
+        browser.storage.sync.set({
+            recordList:  mainWindow.encryptList(mainWindow.recordList)
+        });
+    },
+
+    deleteDataByIndex:function(index){
+        mainWindow.recordList.splice(index,1);
+
+        browser.storage.sync.set({
+            recordList:  mainWindow.encryptList(mainWindow.recordList)
+        });
+
+        mainWindow.manualSyncUpdate();
+    },
+
+    encryptList(recordList){
+        // var encryptList = CryptoJS.AES.encrypt(JSON.stringify(recordList),this.masterKey).toString();
+
+        var ciphertext = CryptoJS.AES.encrypt(JSON.stringify(recordList),this.masterKey);
+
+        return ciphertext.toString();
+    },
+
+    decrpytList(encrpytList){
+        // console.log('Decrypting List '+ encrpytList);
+        if (!encrpytList) return encrpytList;
+
+            // Decrypt
+            var bytes  = CryptoJS.AES.decrypt(encrpytList, this.masterKey);
+            var decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+
+        // console.log('Decrpyted List' + decryptedData);
+
+        return decryptedData;
+    },
+
+    manualSyncUpdate(){ //Sometime the onchange listner is broken
+        // mainWindow.recordList.sort(function(a,b){
+        //     var textA = a.name.toUpperCase();
+        //     var textB = b.name.toUpperCase();
+
+        //     var textC = a.username.toUpperCase();
+        //     var textD = b.username.toUpperCase();
+        //     if (textA < textB) return -1;
+        //     else if (textA > textB) return 1;
+        //     else if (textC < textD) return -1;
+        //     else if (textC > textD) return 1;
+        //     else return 0;
+        // });
+
+        mainPageHelper.loadMainPage(mainWindow.recordList);
+
+        // mainWindow.storageChangedListener('',mainWindow.recordList);
     },
 
     storageChangedListener:function(changes, area) {
+        // console.log('storage changed');
         var changedItems = Object.keys(changes);
        
         for (var item of changedItems) {
-            mainWindow.recordList = changes[item].newValue;
+            mainWindow.recordList = mainWindow.decrpytList(changes[item].newValue);
         }
 
         mainPageHelper.loadMainPage(mainWindow.recordList);
     },
 
     addNewItemWindow:null,
+    addNewItemView:null,
+    addNewItemEdit:null,
 
     //Colors
     colorPrimary1: "#555",
+    colorPrimary2: "gainsboro",
     colorGreen: "#007000",
     colorGreenLight: "#008000",
     colorWhiteDarken:"#F5F5F5",
@@ -148,6 +416,32 @@ var mainWindow = {
     hiddenInputField:null,
 
     preintialize:function(){ //Load before dom is ready
+        //Load storage area
+        var ywzPMStorage = browser.storage.sync.get(
+            {
+                recordList: mainWindow.encryptList([])
+            }
+        );
+        ywzPMStorage.then(function(item){
+            // console.log('Loading Storage from sync');
+            // console.log(item.recordList);
+            if (item){
+                mainWindow.recordList = mainWindow.decrpytList(item.recordList);
+            }
+        
+            mainWindow.manualSyncUpdate();
+            // mainPageHelper.loadMainPage(mainWindow.recordList);
+            browser.storage.onChanged.addListener(mainWindow.storageChangedListener);
+        },
+        function(error){
+            console.log(error)
+        
+            mainWindow.manualSyncUpdate();
+            // mainPageHelper.loadMainPage(mainWindow.recordList);
+            browser.storage.onChanged.addListener(mainWindow.storageChangedListener);
+        });
+
+
         //Load URL, Title and Favicon
         mainWindow.getTabsInfo(function(windowInfo){
             tabInfo = windowInfo.tabs;
@@ -159,33 +453,20 @@ var mainWindow = {
                 break;
             }
         })
-
-        //Load storage area
-        var ywzPMStorage = browser.storage.sync.get(
-            {
-                recordList:[]
-            }
-        );
-        ywzPMStorage.then(function(item){
-            if (item){
-                mainWindow.recordList = item.recordList;
-            }
-        
-            mainPageHelper.loadMainPage(mainWindow.recordList);
-            browser.storage.onChanged.addListener(mainWindow.storageChangedListener);
-        },
-        function(error){
-            console.log(error)
-        
-            mainPageHelper.loadMainPage(mainWindow.recordList);
-            browser.storage.onChanged.addListener(mainWindow.storageChangedListener);
-        });
-
     }
 };
 
 //Initialize mainWindow
 mainWindow.preintialize();
+// data=[];
+// console.log(data);
+// console.log('Testing');
+// // Encrypt
+// var ciphertext = CryptoJS.AES.encrypt(JSON.stringify(data), 'secret key 123');
+// // Decrypt
+// var bytes  = CryptoJS.AES.decrypt(ciphertext.toString(), 'secret key 123');
+// var decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+// console.log(decryptedData);
 
 //Main Page Section
 var mainPageHelper = {
@@ -193,7 +474,7 @@ var mainPageHelper = {
     mainPageContent:null,
 
     loadMainPage:function(recordList){ //Load the main page by ini / reinitialize the main page content
-        mainPageHelper.contentHead = $('.popup-content'); //Load the reference
+        mainPageHelper.contentHead = $('#popup-home-content'); //Load the reference
         if (!( typeof mainPageContent === "undefined") && mainPageContent!=null) {
             mainPageContent.remove(); //Remove previous content
         }
@@ -213,10 +494,6 @@ var mainPageHelper = {
 
             // var bool1 = currentURLRegExp.test(storedURL);
             var bool2 = currentURLRegExp.test(storedURL);
-
-            console.log(currentURL);
-            console.log(storedURL);
-            console.log(bool2);
 
             if (bool2){ //If true
                 
@@ -239,6 +516,7 @@ var mainPageHelper = {
 
         var mainDiv = $('<div></div>');
         mainPageContent = mainDiv;
+
         //Current Tab Section
         var currentTabSection=$('<div></div');
         currentTabSection.addClass('popup-list-section');
@@ -249,6 +527,7 @@ var mainPageHelper = {
 
         if (currentListIndex.length==0){ //Append No record
             //TODO
+            currentTabList.append(mainPageHelper.generateMainPageViewNoItem());
         }
         else{
             for (var i=0;i<currentListIndex.length;i++){ //Append correponsding item
@@ -271,6 +550,7 @@ var mainPageHelper = {
 
         if (otherListIndex.length==0){ //Append no record
             //TODO
+            otherTabList.append(mainPageHelper.generateMainPageViewNoItem());
         }
         else{
             for (var i=0;i<otherListIndex.length;i++){ //Append correponsding item
@@ -284,12 +564,16 @@ var mainPageHelper = {
         mainDiv.append(currentTabSection);
         mainDiv.append(otherTabSection);
 
-        mainPageHelper.contentHead.append(mainDiv); //Append the final form to the main vieww
+        mainPageHelper.contentHead.append(mainDiv); //Append the final form to the main view
+
+        //Synchonise and reset most stuff
+        mainWindow.searchEmptyDiv.css('display','none'); //Hide no search result
+        mainPageHelper.searchFunction(mainWindow.searchInput.val());
     },
 
     searchFunction: function(parameter){ // Will search for match in Name
         //Go through list, disable and enable visibility
-        var searchDiv = $('.popup-list-section');
+        var searchDiv = $('body').children('.popup-div').find('.popup-list-section');
         var allNoResult = true;
         searchDiv.each(function(){
             var allRecordDiv = $(this).find('.popup-record-div');
@@ -298,6 +582,18 @@ var mainPageHelper = {
             var paraReg =  new RegExp(parameter,'i');
             allRecordDiv.each(function(){
                 var instance = $(this);
+                if (instance.attr('id')<0){
+                    if (parameter==='' || !parameter){
+                        instance.css('display','block');
+                        noResult=false;
+                        allNoResult=false;
+                    }
+                    else{
+                        instance.css('display','none');
+                    }
+
+                    return;
+                }
         
                 if (paraReg.test(mainWindow.recordList[instance.attr('id')].username) || paraReg.test(mainWindow.recordList[instance.attr('id')].name)){
                     instance.css('display','flex');
@@ -339,15 +635,58 @@ var mainPageHelper = {
 
         var header = addNewItemHelper.generateContentSectionSpecialHeader(currentItem.name);
         header.find('label').css('color','black');
+        header.css('cursor','pointer');
+        header.attr('title','Auto-fill');
+        header.click(function(){
+            var executableCode = 
+            `
+            var inputList = document.getElementsByTagName("input");
+            var regExpEmail = new RegExp('email', "i");
+            var regExpUsername = new RegExp('username', "i");
+            // var regExpEmail = /email/;
+            for (var i=0; i<inputList.length; i++){
+                var inputField = inputList[i];
+                var inputFieldName = inputField.name.toLowerCase();
+                if (inputField.type === 'password' ||  inputField.type === 'Password' || inputField.type === 'PASSWORD'){
+                    inputField.value = '`+currentItem.password+`'
+                }
+                else if (inputFieldName === 'username' || inputFieldName === 'loginname'|| inputFieldName=== 'login' || inputFieldName === 'email' || inputFieldName === 'user' || inputFieldName === 'identifier' || regExpEmail.test(inputFieldName) || regExpUsername.test(inputFieldName)){
+                        inputField.value = '`+currentItem.username+`';
+                }
+            }
+            `
 
-        var inputUserName = addNewItemHelper.generateContentSectionInputField('','text',true);
-        inputUserName.val(currentItem.username);
+            mainWindow.pushNotification('Auto-filled');
 
-        header.append(inputUserName);
+            var executing = browser.tabs.executeScript({
+                code: executableCode
+            });
+            executing.then(function(){
+            }, 
+            function(error){
+                // alert('Execute Script on Active Tab fail with : ' + error);
+            });
+        });
+
+        var labelUserName = addNewItemHelper.generateContentSectionSpecialHeader(currentItem.username);
+        header.append(labelUserName);
+        header.find('label').each(function () {
+            $(this).css('cursor','pointer');
+            $(this).click(function(e){
+               
+            });
+        });
+
         div.append(header);
 
         //Logo Section
         var logoDiv = $('<div></div>');
+        logoDiv.css('cursor','pointer');
+        logoDiv.attr('title','Launch Website');
+        logoDiv.click(function(){ //Open Website
+            var win = window.open(currentItem.url, '_blank');
+            win.focus();
+        });
         logoDiv.css('padding','0px 10px 0px 0px');
         var img = $('<img></img>');
         img.attr('src',currentItem.favicon);
@@ -360,8 +699,154 @@ var mainPageHelper = {
         //Action Section
         div.append(addNewItemHelper.generateContentSectionCopyContent(currentItem.username,'fa-user','Copy Username'));
         div.append(addNewItemHelper.generateContentSectionCopyContent(currentItem.password,'fa-key','Copy Password'));
+        div.append(addNewItemHelper.generateContentSectionEditContent(currentItem,index));
 
         return div;
+    },
+
+    generateMainPageViewNoItem: function(){
+        var div = addNewItemHelper.generateContentSectionStandardDiv();//Div
+        div.attr('id','-1');
+        div.addClass('popup-record-div');
+
+        var noitemLabel = $('<label>There is no item on the list.</label>');
+        div.append(noitemLabel);
+
+
+        return div;
+    },
+
+    //Generate Tool Entry
+    generateToolPageEntry:function(icon,title,message,color){
+        var div = addNewItemHelper.generateContentSectionStandardDiv();//Div
+        div.addClass('popup-setting-div');
+        div.css('cursor','pointer');
+
+        var header = addNewItemHelper.generateContentSectionSpecialHeader(title);
+        var headerLabel = header.find('label');
+        headerLabel.css('color','black');
+        headerLabel.css('font-size','16px');
+        header.css('cursor','pointer');
+        header.click(function(){
+            
+        });
+
+        var labelUserName = addNewItemHelper.generateContentSectionSpecialHeader(message);
+        var label  = labelUserName.find('label');
+        label.css('cursor','pointer');
+        label.css('color',mainWindow.colorPrimary1);
+        header.append(labelUserName);
+        header.find('label').each(function () {
+            var label =  $(this);
+            label.css('cursor','pointer');
+        });
+
+        div.append(header);
+
+        //Logo Section
+        var logoDiv = $('<div></div>');
+        var logo = $('<div></div>');
+        logo.addClass('fa');
+        logo.addClass(icon);
+        logo.css('font-size','36px');
+        logo.css('margin','auto');
+        logo.css('color',color);
+        logoDiv.css('display','flex');
+        logoDiv.css('align-items','center');
+        logoDiv.css('height','48px');
+        logoDiv.css('width','48px');
+        // img.css('border-radius','50%');
+        logoDiv.append(logo);
+        div.prepend(logoDiv);
+
+        return div;
+    },
+
+    //Generate Generic Window Header
+    generateMainPageHeader: function(headerStr, leftHandFunction, rightHandFunction, leftHandIconClass, rightHandIconClass){
+        var addNewItemHeader=$('<div></div>'); //Create Header
+        addNewItemHeader.css('height',"45px");
+        addNewItemHeader.css('width',"100%");
+        addNewItemHeader.css('background-color',"#555");
+        addNewItemHeader.css('color',"white");
+
+        var addNewItemCancel=$("<div></div>"); //Create Cancel Section
+        addNewItemCancel.click(leftHandFunction);
+
+        addNewItemCancel.hover(function () {
+            addNewItemCancel.css('background-color','grey');
+        }, function () {
+            addNewItemCancel.css('background-color',mainWindow.colorPrimary1);
+        });
+        addNewItemCancel.css('height','100%');
+        addNewItemCancel.css('width','10%');
+        addNewItemCancel.css('display','flex');
+        addNewItemCancel.css('justify-content','center');
+        addNewItemCancel.css('align-items','center');
+        addNewItemCancel.css('cursor','pointer');
+        addNewItemCancel.css('float','left');
+        addNewItemCancel.attr('title','Cancel');
+    
+        var addNewItemCancelLabel=$("<i></i>"); //Create Cancel Label
+        addNewItemCancelLabel.addClass("fa");
+        addNewItemCancelLabel.addClass("fa-times");
+        addNewItemCancelLabel.css('text-align','center');
+        addNewItemCancelLabel.css('font-size','24px');
+    
+        addNewItemCancel.append(addNewItemCancelLabel);
+    
+        var addNewItemWindowTitle=$('<div></div>');//Create Window Title
+        addNewItemWindowTitle.css('float','left');
+        addNewItemWindowTitle.css('width','80%');
+        addNewItemWindowTitle.css('height','100%');
+        addNewItemWindowTitle.css('display','flex');
+        addNewItemWindowTitle.css('text-align','center');
+        addNewItemWindowTitle.css('justify-content','center');
+        addNewItemWindowTitle.css('align-items','center');
+        var titleBarLabelStr = headerStr;
+        var addNewItemWindowTitleLabel=$('<span><b>'+ titleBarLabelStr +'</b></span>');//Create Window Title Label
+        addNewItemWindowTitleLabel.css('color','white');
+        addNewItemWindowTitleLabel.css('font-size',mainWindow.fontSizeWindowTitle);
+        addNewItemWindowTitle.append(addNewItemWindowTitleLabel);
+
+        var addNewSave=$('<div></div>');
+        addNewSave.click(rightHandFunction);
+        addNewSave.hover(function () {
+            addNewSave.css('background-color',mainWindow.colorGreenLight);
+        }, function () {
+            addNewSave.css('background-color',mainWindow.colorGreen);
+        });
+        addNewSave.css('background-color',mainWindow.colorGreen);
+        addNewSave.css('width','10%');
+        addNewSave.css('height','100%');
+        addNewSave.css('display','flex');
+        addNewSave.css('text-align','center');
+        addNewSave.css('justify-content','center');
+        addNewSave.css('align-items','center');
+        addNewSave.css('float','left');
+        addNewSave.css('cursor','pointer');
+        var addNewSaveLabel = $('<i></i>');
+        addNewSaveLabel.addClass("fa");
+        addNewSaveLabel.addClass(rightHandIconClass);
+        addNewSaveLabel.css('text-align','center');
+        addNewSaveLabel.css('font-size','24px');
+        addNewSave.append(addNewSaveLabel);
+
+        if (leftHandFunction){
+            addNewItemHeader.append(addNewItemCancel);
+        }
+
+        addNewItemHeader.append(addNewItemWindowTitle);
+
+        if (rightHandFunction){
+            addNewItemHeader.append(addNewSave);
+        }
+
+        if (!leftHandFunction && !rightHandFunction){
+            addNewItemWindowTitle.css('width','100%');
+        }
+
+        return addNewItemHeader;
     }
 };
 
@@ -374,6 +859,7 @@ var addNewItemHelper = {
     passwordInputId:"PasswordInput",
     noteInputId:"NoteInput",
     divId:"FormInput",
+    favIconId:"FavIconInputURL",
 
     //Cahce of favicon
     favicon:null,
@@ -384,8 +870,24 @@ var addNewItemHelper = {
     view:3,
 
     //Generate new item section
-    addNewItem: function (parent,type,id){
-        if (type=addNewItemHelper.new){
+    addNewItem: function (parent,type,index){
+        if (type===addNewItemHelper.new){
+            if (!mainWindow.addNewItemWindow);
+            else return;
+        }
+        else if (type===addNewItemHelper.edit){
+            if (!mainWindow.addNewItemEdit);
+            else return;
+        }
+        else{
+            if (!mainWindow.addNewItemView);
+            else return;
+        }
+
+        var inputBool = true;
+        if (type===addNewItemHelper.new){
+            inputBool = false;
+
             mainWindow.getTabsInfo(function(windowInfo){
                 tabInfo = windowInfo.tabs;
                 for (var i = 0; i < windowInfo.tabs.length; i++) {
@@ -396,6 +898,9 @@ var addNewItemHelper = {
                     break;
                 }
             })
+        }
+        else if (type===addNewItemHelper.edit){
+            inputBool = false;
         }
 
         //Add New Item Page
@@ -408,7 +913,14 @@ var addNewItemHelper = {
         addNewItemDiv.css('width','100%');
         addNewItemDiv.css('height','100%');
         addNewItemDiv.css('background-color','gainsboro');
-        addNewItemDiv.css('z-index','999');
+        if (type == addNewItemHelper.new)
+            addNewItemDiv.css('z-index','999');
+        else if (type == addNewItemHelper.view){
+            addNewItemDiv.css('z-index','1000');
+        }
+        else if (type == addNewItemHelper.edit){
+            addNewItemDiv.css('z-index','1001');
+        }
         addNewItemDiv.css("top","100%");
         addNewItemDiv.css("transition","all .4s ease-out");
         //addNewItemDiv.css();
@@ -423,12 +935,31 @@ var addNewItemHelper = {
     
         var addNewItemCancel=$("<div></div>"); //Create Cancel Section
         addNewItemCancel.click(function () {
-            mainWindow.addNewItemWindow.css('top','100%');
+            if (type === addNewItemHelper.view)
+                mainWindow.addNewItemView.css('top','100%');
+            else if (type === addNewItemHelper.edit)
+                mainWindow.addNewItemEdit.css('top','100%');
+            else
+                mainWindow.addNewItemWindow.css('top','100%');
+
             setTimeout(function(){
-                mainWindow.addNewItemWindow.remove();
-                mainWindow.addNewItemWindow = null;
+                if (type === addNewItemHelper.view){
+                    mainWindow.addNewItemView.remove();
+                    mainWindow.addNewItemView = null;
+                }
+                else if (type === addNewItemHelper.edit){
+                    mainWindow.addNewItemEdit.remove();
+                    mainWindow.addNewItemEdit = null;
+
+                    mainWindow.addNewItemView
+                }
+                else{
+                    mainWindow.addNewItemWindow.remove();
+                    mainWindow.addNewItemWindow = null;
+                }
             }, 410);
         });
+
         addNewItemCancel.hover(function () {
             addNewItemCancel.css('background-color','grey');
         }, function () {
@@ -460,31 +991,79 @@ var addNewItemHelper = {
         addNewItemWindowTitle.css('text-align','center');
         addNewItemWindowTitle.css('justify-content','center');
         addNewItemWindowTitle.css('align-items','center');
-        var addNewItemWindowTitleLabel=$('<span><b>Add New Account Info</b></span>');//Create Window Title Label
+        var titleBarLabelStr = '';
+        if (type===addNewItemHelper.new){
+            titleBarLabelStr = 'Add New Account Info';
+        }
+        else if (type===addNewItemHelper.view){
+            titleBarLabelStr = 'View Content';
+        }
+        else if (type === addNewItemHelper.edit){
+            titleBarLabelStr = 'Edit Content';
+        }
+        var addNewItemWindowTitleLabel=$('<span><b>'+ titleBarLabelStr +'</b></span>');//Create Window Title Label
         addNewItemWindowTitleLabel.css('color','white');
         addNewItemWindowTitleLabel.css('font-size',mainWindow.fontSizeWindowTitle);
         addNewItemWindowTitle.append(addNewItemWindowTitleLabel);
     
         var addNewSave=$('<div></div>');
         addNewSave.click(function () {
-            var targetDiv = $('#'+addNewItemHelper.divId);
-
             if (type==addNewItemHelper.new){ //Save New Record
+                var targetDiv = $('#'+addNewItemHelper.divId);
+                var faviconSource = targetDiv.find('#'+addNewItemHelper.favIconId).val();
+                if (faviconSource === ''){
+                    faviconSource = mainWindow.deafultFavIconURL;
+                }
+
                 mainWindow.saveData(targetDiv.find('#'+addNewItemHelper.urlInputId).val(),targetDiv.find('#'+addNewItemHelper.nameInputId).val(),targetDiv.find('#'+addNewItemHelper.usernameInputId).val(),
-                    targetDiv.find('#'+addNewItemHelper.passwordInputId).val(), targetDiv.find('#'+addNewItemHelper.noteInputId).val(),addNewItemHelper.favicon);
+                    targetDiv.find('#'+addNewItemHelper.passwordInputId).val(), targetDiv.find('#'+addNewItemHelper.noteInputId).val(), faviconSource);
+
+                mainWindow.pushNotification('New Record Saved');
             }
             else if (type==addNewItemHelper.edit){
-                //TODO ??   
+                var targetDiv = mainWindow.addNewItemEdit;
+                var faviconSource = targetDiv.find('#'+addNewItemHelper.favIconId).val();
+                if (faviconSource === ''){
+                    faviconSource = mainWindow.deafultFavIconURL;
+                }
+
+                mainWindow.saveDataWithIndex(targetDiv.find('#'+addNewItemHelper.urlInputId).val(),targetDiv.find('#'+addNewItemHelper.nameInputId).val(),targetDiv.find('#'+addNewItemHelper.usernameInputId).val(),
+                targetDiv.find('#'+addNewItemHelper.passwordInputId).val(), targetDiv.find('#'+addNewItemHelper.noteInputId).val(),faviconSource, index);
+
+                mainWindow.pushNotification('Record Edited');  
             }
             else if (type==addNewItemHelper.view){
-                //TODO ??
+                addNewItemHelper.addNewItem($(".popup-body"), addNewItemHelper.edit, index);
             }
 
-            mainWindow.addNewItemWindow.css('top','100%');
+            if (type === addNewItemHelper.view)
+                //mainWindow.addNewItemView.css('top','100%');
+                ;
+            else if (type === addNewItemHelper.edit){
+                var item = mainWindow.recordList[index];
+                
+                mainWindow.addNewItemView.find('#'+addNewItemHelper.urlInputId).val(item.url);
+                mainWindow.addNewItemView.find('#'+addNewItemHelper.nameInputId).val(item.name);
+                mainWindow.addNewItemView.find('#'+addNewItemHelper.usernameInputId).val(item.username);
+                mainWindow.addNewItemView.find('#'+addNewItemHelper.passwordInputId).val(item.password);
+                mainWindow.addNewItemView.find('#'+addNewItemHelper.noteInputId).val(item.note);
+
+                mainWindow.addNewItemEdit.css('top','100%');
+            }
+            else
+                mainWindow.addNewItemWindow.css('top','100%');
 
             setTimeout(function(){
-                mainWindow.addNewItemWindow.remove();
-                mainWindow.addNewItemWindow = null;
+                if (type === addNewItemHelper.view){
+                }
+                else if (type === addNewItemHelper.edit){
+                    mainWindow.addNewItemEdit.remove();
+                    mainWindow.addNewItemEdit = null;
+                }
+                else{
+                    mainWindow.addNewItemWindow.remove();
+                    mainWindow.addNewItemWindow = null;
+                }
             }, 500);
         });
         addNewSave.hover(function () {
@@ -500,11 +1079,17 @@ var addNewItemHelper = {
         addNewSave.css('justify-content','center');
         addNewSave.css('align-items','center');
         addNewSave.css('float','left');
-        addNewSave.attr('title','Save');
         addNewSave.css('cursor','pointer');
         var addNewSaveLabel = $('<i></i>');
         addNewSaveLabel.addClass("fa");
-        addNewSaveLabel.addClass("fa-check");
+        if (type === addNewItemHelper.view){
+            addNewSaveLabel.addClass("fa-edit");
+            addNewSave.attr('title','Edit');
+        }
+        else{
+            addNewSaveLabel.addClass("fa-check");
+            addNewSave.attr('title','Save');
+        }
         addNewSaveLabel.css('text-align','center');
         addNewSaveLabel.css('font-size','24px');
         addNewSave.append(addNewSaveLabel);
@@ -533,44 +1118,84 @@ var addNewItemHelper = {
 
         var addNewItemInfoURL = this.generateContentSectionStandardDiv(); //URL of the record
         var addNewItemInfoHeader = this.generateContentSectionStandardHeader("URL");
-        var addNewItemInfoURLInput = this.generateContentSectionInputField(this.urlInputId,'text');
+        var addNewItemInfoURLInput = this.generateContentSectionInputField(this.urlInputId,'text',inputBool);
         addNewItemInfoHeader.append(addNewItemInfoURLInput);
         addNewItemInfoURL.append(addNewItemInfoHeader);
         addNewItemInfoList.append(addNewItemInfoURL);
 
         var addNewItemInfoName = this.generateContentSectionStandardDiv(); //Name of the record
         var addNewItemInfoNameHeader = this.generateContentSectionStandardHeader("Name");
-        var addNewItemInfoNameInput = this.generateContentSectionInputField(this.nameInputId,'text');
+        var addNewItemInfoNameInput = this.generateContentSectionInputField(this.nameInputId,'text',inputBool);
         addNewItemInfoNameHeader.append(addNewItemInfoNameInput);
         addNewItemInfoName.append(addNewItemInfoNameHeader);
         addNewItemInfoList.append(addNewItemInfoName);
 
         var addNewItemInfoUserName = this.generateContentSectionStandardDiv();//UserName
         var addNewItemInfoUserNameHeader = this.generateContentSectionStandardHeader('Username');
-        var addNewItemInfoUserInput = this.generateContentSectionInputField(this.usernameInputId,'text');
+        var addNewItemInfoUserInput = this.generateContentSectionInputField(this.usernameInputId,'text',inputBool);
         addNewItemInfoUserNameHeader.append(addNewItemInfoUserInput);
         addNewItemInfoUserName.append(addNewItemInfoUserNameHeader);
         addNewItemInfoList.append(addNewItemInfoUserName);
 
         var addNewPassword = this.generateContentSectionStandardDiv(); //Password
         var addNewPasswordHeader = this.generateContentSectionStandardHeader("Password");
-        var addNewPasswordInput = this.generateContentSectionInputField(this.passwordInputId,'password');
+        var addNewPasswordInput = this.generateContentSectionInputField(this.passwordInputId,'password',inputBool);
         addNewPasswordHeader.append(addNewPasswordInput);
         addNewPassword.append(addNewPasswordHeader);
         addNewPassword.append(this.generateContentSectionViewPassowrd(addNewPasswordHeader.find("input")));
         addNewItemInfoList.append(addNewPassword);
 
-        //TODO Password Generator Logic
-        var addNewPasswordGenerator = this.generatePasswordGenerator(); //Password Generator
-        addNewItemInfoList.append(addNewPasswordGenerator);
+        //Password Generator Logic
+        if (type===addNewItemHelper.edit || type===addNewItemHelper.new){
+            var addNewPasswordGenerator = this.generatePasswordGenerator(addNewPasswordInput); //Password Generator
+            addNewItemInfoList.append(addNewPasswordGenerator);
+
+            //Fav Icon
+            var favIconDiv = this.generateContentSectionStandardDiv();
+            var favIconHeader = this.generateContentSectionStandardHeader("Display Icon URL");
+
+            var favIconDiv2 = $('<div></div>');
+            favIconDiv2.css("display","flex");
+            var favIconDisplay =  $('<img></img>');
+            favIconDisplay.css("width","24px");
+            favIconDisplay.css("height","24px");
+
+            var favIconURLInput = this.generateContentSectionInputField(addNewItemHelper.favIconId,'text',inputBool);
+            favIconURLInput.on('input',function(){
+                var url = $(this).val();
+                favIconDisplay.attr('src',url);
+
+                if (url=== ''){
+                    favIconDisplay.attr('src',"/icons/favicon-32x32.png");
+                }
+            });
+
+            if (type===addNewItemHelper.edit){
+                var item = mainWindow.recordList[index];
+
+                favIconURLInput.val(item.favicon);
+            }
+            else{
+                favIconURLInput.val(mainWindow.currentPageFavIconURL);
+            }
+
+            favIconDisplay.attr('src',favIconURLInput.val());
+            if (favIconURLInput.val()=== ''){
+                favIconDisplay.attr('src',"/icons/favicon-32x32.png");
+            }
+
+            favIconDiv2.append(favIconDisplay);
+            favIconDiv2.append(favIconURLInput);
+            favIconHeader.append(favIconDiv2);
+            favIconDiv.append(favIconHeader);
+            addNewItemInfoList.append(favIconDiv);
+        }
 
         /*End of Info Field*/
 
         // var addNewItemCustomSection=$('<div></div');//Section Custom Field
         // addNewItemCustomSection.addClass('popup-list-section');
         // addNewItemCustomSection.append(this.generateContentSectionHeader("Custom Field"));
-
-        
         /*End of Custoim Field */
 
         var addNewItemNoteSection=$('<div></div');//Section Note
@@ -584,20 +1209,32 @@ var addNewItemHelper = {
 
         var addNewItemNoteDiv = this.generateContentSectionStandardDiv();
         var addNewItemNoteHeader =this.generateContentSectionStandardHeader("Note Area");
-        addNewItemNoteHeader.append(this.generateTextArea(this.noteInputId));
+        addNewItemNoteHeader.append(this.generateTextArea(this.noteInputId,inputBool));
         addNewItemNoteDiv.append(addNewItemNoteHeader);
         addNewItemNoteSection.append(addNewItemNoteDiv);
 
         /*End of Note Section */
 
         /*Delete Section*/
-        if (type==addNewItemHelper.edit){
-            //TODO add delete functionality
+        var addNewItemDeleteSection;
+        if (type===addNewItemHelper.edit){
+            //Delete Functionality
+            addNewItemDeleteSection=$('<div></div');//Section Note
+            addNewItemDeleteSection.addClass('popup-list-section');
+            addNewItemDeleteSection.append(this.generateContentSectionHeader("Delete"));
+
+            var addNewItemDeleteList=$('<div></div>');
+            addNewItemDeleteList.css('border-top','2px solid lightgrey');
+
+            var addNewDeleteFunction = this.generateDeleteSection(index); //Delete 
+            addNewItemDeleteList.append(addNewDeleteFunction);
+
+            addNewItemDeleteSection.append(addNewItemDeleteList);
+    
         }
         /*End of Delete Section */
 
         /*Start of Filling in form logic*/
-        //TODO edit and view need chanmge this part
         //Update New changes
         addNewItemInfoHeader.find('input').val(mainWindow.currentPageURL);
         addNewItemInfoNameHeader.find('input').val(mainWindow.currentPageTitle);
@@ -606,19 +1243,42 @@ var addNewItemHelper = {
         addNewItemForm.append(addNewItemInfoSection);
         // addNewItemForm.append(addNewItemCustomSection);    
         addNewItemForm.append(addNewItemNoteSection);
+        if (addNewItemDeleteSection)
+            addNewItemForm.append(addNewItemDeleteSection);
+        
         /*End of Auto filling in form logic */
         
-        
         parent.append(addNewItemDiv); //Add generated tab to parent
+        if (index>=0){ //Punch in all the correct value according to index
+            var item = mainWindow.recordList[index];
+
+            addNewItemDiv.find('#'+addNewItemHelper.urlInputId).val(item.url);
+            addNewItemDiv.find('#'+addNewItemHelper.nameInputId).val(item.name);
+            addNewItemDiv.find('#'+addNewItemHelper.usernameInputId).val(item.username);
+            addNewItemDiv.find('#'+addNewItemHelper.passwordInputId).val(item.password);
+            addNewItemDiv.find('#'+addNewItemHelper.noteInputId).val(item.note);
+            addNewItemDiv.find('#'+addNewItemHelper.favIconId).val(item.favicon);
+        }
     
-        mainWindow.addNewItemWindow = addNewItemDiv; //Cache the created window
+        //Cache the created window
+        if (type === addNewItemHelper.view)
+            mainWindow.addNewItemView = addNewItemDiv;
+        else if (type === addNewItemHelper.edit)
+            mainWindow.addNewItemEdit = addNewItemDiv;
+        else
+            mainWindow.addNewItemWindow = addNewItemDiv; 
     
-        setTimeout(function(){
-            mainWindow.addNewItemWindow.css('top',0); //Move the window to top
+        setTimeout(function(){ //Move window to the top
+            if (type === addNewItemHelper.view)
+                mainWindow.addNewItemView.css('top','0%');
+            else if (type === addNewItemHelper.edit)
+                mainWindow.addNewItemEdit.css('top','0%');
+            else
+                mainWindow.addNewItemWindow.css('top','0%');
         }, 100);
     },
 
-    generateContentSectionHeader:function (messageString){ //Generate Section Header
+    generateContentSectionHeader:function (messageString){ //Generate Top-most Section Header
         var returnResult = $('<div><b>'+ messageString +'</b></div>');
         returnResult.css('background-color','transparent');
         returnResult.css('color','#777777');
@@ -629,7 +1289,7 @@ var addNewItemHelper = {
         return returnResult;
     },
 
-    generateContentSectionStandardDiv:function(){
+    generateContentSectionStandardDiv:function(){ //Genereate per row standard div
         var returnResult = $('<div></div>');
         returnResult.css('background-color','white');
         returnResult.css('padding','10px 10px');
@@ -651,7 +1311,7 @@ var addNewItemHelper = {
         return returnResult;
     },
 
-    generateContentSectionStandardHeader:function(labelName){
+    generateContentSectionStandardHeader:function(labelName){ //Standard per row header
         var returnResult = $('<div></div>');
         returnResult.css('width','100%');
 
@@ -671,13 +1331,13 @@ var addNewItemHelper = {
         var returnResult = $('<div></div>');
         returnResult.css('width','100%');
 
-        var label = $('<input></input>');
-        label.val(headerName);
-        label.attr('disabled','');
+        var label = $('<label>'+headerName+'</label>');
+        label.attr('readonly','readonly');
         label.addClass('popup-display-input-header');
         label.css('color','black');
         label.css('background-color','transparent');
         label.css('border','none');
+        label.css('margin-bottom','0px');
         // label.css('margin-bottom','5px');
         label.css('font-size','13px');
         label.css('width','100%');
@@ -706,13 +1366,17 @@ var addNewItemHelper = {
         return returnResult;
     },
 
-    generateTextArea:function(inputID){
+    generateTextArea:function(inputID, disabled){
         var returnResult = $('<textarea></textarea>');
         returnResult.attr('id',inputID);
         returnResult.addClass('content-focus');
         returnResult.css('width','100%');
         returnResult.css('border','none');
         returnResult.css('background-color','transparent');
+
+        if (disabled){
+            returnResult.attr('disabled','true');
+        }
 
         return returnResult;
     },
@@ -776,6 +1440,7 @@ var addNewItemHelper = {
             targetInput.select();
             document.execCommand("copy");
             targetInput.val();
+            mainWindow.pushNotification('Copied to Clipboard');
         });
 
         returnResult.hover(
@@ -790,10 +1455,42 @@ var addNewItemHelper = {
         return returnResult;
     },
 
-    generatePasswordGenerator(){
+    generateContentSectionEditContent(currentItem, index){
+        var returnResult = $('<span></span>');
+
+        returnResult.addClass('fa');
+        returnResult.addClass('fa-edit');
+
+        returnResult.css('float','right');
+        returnResult.css('font-size','18px');
+        returnResult.css('cursor','pointer');
+        returnResult.css('margin-left','5px');
+
+        returnResult.attr('title','View Content');
+
+        returnResult.click(function(){
+            addNewItemHelper.addNewItem($(".popup-body"), addNewItemHelper.view, index);
+        });
+
+        returnResult.hover(
+            function(){
+                returnResult.css('color',mainWindow.colorBlackWhiten);
+            },
+            function(){
+                returnResult.css('color','black');
+            }
+        )
+
+        return returnResult;
+    },
+
+
+    generatePasswordGenerator(inputField){
         var returnResult = $('<div></div>');
         returnResult.css('background-color','white');
         returnResult.css('padding','10px 10px');
+        returnResult.css('border-bottom','1px solid rgb(232, 232, 232)');
+        returnResult.css('cursor','pointer');        
         returnResult.hover(function(){
             returnResult.css('background-color',mainWindow.colorWhiteDarken);
         },
@@ -801,8 +1498,16 @@ var addNewItemHelper = {
             returnResult.css('background-color','white');
         });
         returnResult.click(function(){
-            returnResult.find('.content-focus').focus();
+            var body = $('body')
+
+            PasswordGenerator.generatePasswordDiv(function(resultValue){
+                inputField.val(resultValue);
+            }, body, 1004);
         });
+
+        var div = $('<div></div>');
+        div.css('display','flex');
+        div.css('align-items','center');
 
         var labelName = "Generate Passowrd";
 
@@ -810,8 +1515,69 @@ var addNewItemHelper = {
         label.css('color','#777777');
         label.css('font-size','13px');
         label.css('display','block');
+        label.css('cursor','pointer');
+        label.css('width','100%');
 
-        returnResult.append(label);
+        var pointerIcon = $('<span></span>');
+        pointerIcon.addClass('fa');
+        pointerIcon.addClass('fa-caret-right');
+
+        div.append(label);
+        div.append(pointerIcon);
+        returnResult.append(div);
+
+        return returnResult;
+    },
+
+    //Specific Implementation
+    generateDeleteSection(index){
+        var returnResult = $('<div></div>');
+        returnResult.css('background-color','white');
+        returnResult.css('padding','10px 10px');
+        returnResult.css('cursor','pointer');
+        returnResult.hover(function(){
+            returnResult.css('background-color',mainWindow.colorWhiteDarken);
+        },
+        function(){
+            returnResult.css('background-color','white');
+        });
+        returnResult.click(function(){
+            mainWindow.deleteDataByIndex(index);
+
+            mainWindow.addNewItemEdit.css('top','100%');
+            mainWindow.addNewItemView.css('top','100%');
+
+            mainWindow.pushNotification('Reocrd Deleted');
+
+            setTimeout(function(){
+                    mainWindow.addNewItemView.remove();
+                    mainWindow.addNewItemView = null;
+
+                    mainWindow.addNewItemEdit.remove();
+                    mainWindow.addNewItemEdit = null;
+            }, 500);
+            
+        });
+
+        var div = $("<div></div>");
+
+
+        var labelName = "Delete Item";
+        var label = $('<label>' + labelName + '</label>');
+        label.css('color','red');
+        label.css('cursor','pointer');
+        label.css('font-size','13px');
+        label.css('display','inline');
+        label.css('margin-left','5px');
+
+        var deleteIcon = $('<i></i>');
+        deleteIcon.addClass('fa');
+        deleteIcon.addClass('fa-trash');
+        deleteIcon.css('color','red');
+
+        div.append(deleteIcon);
+        div.append(label);
+        returnResult.append(div);
         return returnResult;
     }
 
